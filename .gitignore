@@ -1,0 +1,6 @@
+# Visual Studio temporary files
+.vs/
+
+# Build output
+bin/
+obj/
