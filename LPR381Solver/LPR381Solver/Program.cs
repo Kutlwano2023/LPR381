@@ -3,16 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using LPR381Solver.IO; // Make sure this using directive is correct
+using LPR381Solver.Core;
+using LPR381Solver.Algorithms;
+using LPR381Solver.IO;
 
-namespace LPR_Project
+namespace LPR381Solver.Main
 {
     internal class Program
     {
+        private static LPModel loadedModel;
+        private static string modelObjectiveType;
         private static List<int> modelValues;
         private static List<int> modelWeights;
         private static int modelCapacity;
-        private static string solutionResults;
+        private static string solutionResults = "";
 
         static void Main(string[] args)
         {
@@ -30,14 +34,14 @@ namespace LPR_Project
                 Console.WriteLine("6. Cutting Plane Algorithm");
                 Console.WriteLine("7. Sensitivity Analysis");
                 Console.WriteLine("8. Export result to output file");
-                Console.WriteLine("9. Exit"); // Added a new exit option
+                Console.WriteLine("9. Exit");
                 Console.WriteLine("==============================================");
                 Console.WriteLine("======Pick an option======");
 
                 if (!int.TryParse(Console.ReadLine(), out int choice))
                 {
                     Console.WriteLine("Invalid input. Please enter a number.");
-                    continue; // Skip the rest of the loop and show the menu again
+                    continue;
                 }
 
                 switch (choice)
@@ -45,44 +49,87 @@ namespace LPR_Project
                     case 1:
                         Console.WriteLine("Enter the full path of the input file:");
                         string filePath = Console.ReadLine();
-
-                        var modelData = InputOutput.LoadKnapsackModel(filePath);
-
-                        if (modelData != null)
+                        
+                        // Try to load as an LPModel first (for options 2, 4)
+                        loadedModel = InputOutput.LoadLPModel(filePath);
+                        
+                        // If that fails, try to load as a Knapsack model (for option 5)
+                        if (loadedModel == null)
                         {
-                            modelValues = modelData.Item1;
-                            modelWeights = modelData.Item2;
-                            modelCapacity = modelData.Item3;
-                            Console.WriteLine("Model data stored. You can now choose an algorithm to solve.");
+                            var knapsackData = InputOutput.LoadKnapsackModel(filePath);
+                            if (knapsackData != null)
+                            {
+                                modelObjectiveType = knapsackData.Item1;
+                                modelValues = knapsackData.Item2;
+                                modelWeights = knapsackData.Item3;
+                                modelCapacity = knapsackData.Item4;
+                                Console.WriteLine("Knapsack model data stored. You can now choose an algorithm to solve.");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Failed to load model from file. Check the file format and path.");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("LP Model data stored. You can now choose an algorithm to solve.");
+                            
+                            // Extra step to check if the LP Model is also a Knapsack problem (i.e., has binary variables)
+                            if (loadedModel.SignRestrictions != null && loadedModel.SignRestrictions.All(sr => sr == "bin"))
+                            {
+                                var knapsackData = InputOutput.LoadKnapsackModel(filePath);
+                                if (knapsackData != null)
+                                {
+                                    modelObjectiveType = knapsackData.Item1;
+                                    modelValues = knapsackData.Item2;
+                                    modelWeights = knapsackData.Item3;
+                                    modelCapacity = knapsackData.Item4;
+                                }
+                            }
                         }
                         break;
                     case 2:
-                        // Add your Primal Simplex logic here
+                       
                         break;
                     case 3:
-                        // Add your Revised Primal Simplex logic here
+                        Console.WriteLine("Revised Primal Simplex logic to be implemented.");
                         break;
                     case 4:
-                        // Add your Branch & Bound Simplex logic here
+                        if (loadedModel == null)
+                        {
+                            Console.WriteLine("Error: Please load an LP model first (Option 1).");
+                            break;
+                        }
+                        var branchAndBoundSolver = new BranchAndBoundSimplex();
+                        string newBranchAndBoundResults = "\n=============================================\n" +
+                                                          "== Branch and Bound Simplex Results ==\n" +
+                                                          "=============================================\n" + 
+                                                          branchAndBoundSolver.Solve(loadedModel);
+                        solutionResults += newBranchAndBoundResults;
+                        Console.WriteLine(newBranchAndBoundResults);
                         break;
                     case 5:
                         if (modelValues == null || modelWeights == null)
-                            {
-                                Console.WriteLine("Error: Please load a model first (Option 1).");
-                                break;
-                            }
-                        var knapsack = new Knapsack(modelValues, modelWeights, modelCapacity);
-                        solutionResults = knapsack.Solve(); // Assign the result to your new variable
-                        Console.WriteLine(solutionResults); 
+                        {
+                            Console.WriteLine("Error: Please load a model first (Option 1).");
+                            break;
+                        }
+                        var knapsack = new Knapsack(modelObjectiveType, modelValues, modelWeights, modelCapacity);
+                        string newKnapsackResults = "\n=============================================\n" +
+                                                    "== Branch and Bound Knapsack Results ==\n" +
+                                                    "=============================================\n" + 
+                                                    knapsack.Solve();
+                        solutionResults += newKnapsackResults;
+                        Console.WriteLine(newKnapsackResults);
                         break;
                     case 6:
-                        // Add your Cutting Plane logic here
+                        Console.WriteLine("Cutting Plane Algorithm logic to be implemented.");
                         break;
                     case 7:
-                        // Add your Sensitivity Analysis logic here
+                        Console.WriteLine("Sensitivity Analysis logic to be implemented.");
                         break;
                     case 8:
-                        if (solutionResults != null) // Check if a solution has been found
+                        if (solutionResults != null)
                         {
                             Console.WriteLine("Enter the path for the output file (e.g., C:\\output.txt):");
                             string outputPath = Console.ReadLine();
@@ -100,13 +147,12 @@ namespace LPR_Project
                         Console.WriteLine("Pick a valid option.");
                         break;
                 }
-
-                // Pause the program before showing the menu again to let the user read the output
+                
                 if (!exitProgram)
                 {
                     Console.WriteLine("\nPress Enter to continue...");
                     Console.ReadLine();
-                    Console.Clear(); // Clears the console for a fresh menu
+                    Console.Clear();
                 }
             }
         }

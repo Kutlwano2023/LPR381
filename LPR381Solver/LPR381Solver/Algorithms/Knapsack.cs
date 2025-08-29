@@ -3,138 +3,123 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-public class Knapsack
+namespace LPR381Solver.Algorithms
 {
-    // Private nested classes for organizing data
-    private class Item
+    public class Knapsack
     {
-        public int Weight { get; set; }
-        public int Value { get; set; }
-        public double Density => (double)Value / Weight;
-    }
+        private readonly List<int> _values;
+        private readonly List<int> _weights;
+        private readonly int _capacity;
+        private readonly string _objectiveType;
 
-    private class Node
-    {
-        public int Level { get; set; }
-        public int CurrentWeight { get; set; }
-        public int CurrentValue { get; set; }
-        public double UpperBound { get; set; }
-        public List<int> IncludedItems { get; set; } = new List<int>();
-    }
+        private int _bestValue;
+        private List<bool> _bestSolution;
+        private StringBuilder _outputBuilder;
 
-    private List<Item> items;
-    private int capacity;
-    private int bestValue = 0;
-    private List<int> bestSolution = new List<int>();
-    private StringBuilder outputBuilder;
-
-    public Knapsack(List<int> values, List<int> weights, int capacity)
-    {
-        this.capacity = capacity;
-        this.items = new List<Item>();
-        for (int i = 0; i < values.Count; i++)
+        public Knapsack(string objectiveType, List<int> values, List<int> weights, int capacity)
         {
-            this.items.Add(new Item { Value = values[i], Weight = weights[i] });
-        }
-        this.outputBuilder = new StringBuilder();
-    }
-
-    // Public method to start the solving process and return the full output string
-    public string Solve()
-    {
-        outputBuilder.AppendLine("\nStarting Branch & Bound Knapsack Algorithm...");
-
-        // Sort items by density in descending order for better bounding
-        items = items.OrderByDescending(item => item.Density).ToList();
-        
-        // Create the root node
-        Node root = new Node { Level = 0, CurrentWeight = 0, CurrentValue = 0 };
-        root.UpperBound = Bound(root);
-        
-        BranchAndBound(root);
-        
-        outputBuilder.AppendLine($"\nOptimal Solution Found!");
-        outputBuilder.AppendLine($"Maximum Value: {bestValue}");
-        outputBuilder.AppendLine("Included Items:");
-        for (int i = 0; i < bestSolution.Count; i++)
-        {
-            outputBuilder.AppendLine($"- Item {bestSolution[i] + 1} (Value: {items[bestSolution[i]].Value}, Weight: {items[bestSolution[i]].Weight})");
+            _objectiveType = objectiveType;
+            _values = values;
+            _weights = weights;
+            _capacity = capacity;
+            _outputBuilder = new StringBuilder();
         }
 
-        return outputBuilder.ToString();
-    }
-
-    // Recursive method for the Branch and Bound algorithm
-    private void BranchAndBound(Node node)
-    {
-        if (node.UpperBound <= bestValue)
+        public string Solve()
         {
-            outputBuilder.AppendLine($"  Fathoming node at level {node.Level}. Upper bound ({node.UpperBound:F2}) is not better than current best ({bestValue}).");
-            return;
-        }
+            _outputBuilder.AppendLine($"Starting Branch & Bound Knapsack Algorithm...");
 
-        if (node.Level == items.Count)
-        {
-            if (node.CurrentValue > bestValue)
+            _bestValue = (_objectiveType.ToLower() == "max") ? -1 : int.MaxValue;
+            _bestSolution = new List<bool>(new bool[_values.Count]);
+
+            Search(0, 0, 0, new List<bool>(new bool[_values.Count]));
+
+            _outputBuilder.AppendLine($"\nOptimal Solution Found!");
+            _outputBuilder.AppendLine($"Optimal Value: {_bestValue}");
+            _outputBuilder.AppendLine("Included Items:");
+
+            for (int i = 0; i < _bestSolution.Count; i++)
             {
-                bestValue = node.CurrentValue;
-                bestSolution = new List<int>(node.IncludedItems);
-                outputBuilder.AppendLine($"  New best solution found! Value: {bestValue}");
+                if (_bestSolution[i])
+                {
+                    _outputBuilder.AppendLine($"- Item {i + 1} (Value: {_values[i]}, Weight: {_weights[i]})");
+                }
             }
-            return;
+            return _outputBuilder.ToString();
         }
 
-        var nextItemIndex = node.Level;
-        var nextItem = items[nextItemIndex];
-        
-        // Branch to include the next item
-        if (node.CurrentWeight + nextItem.Weight <= capacity)
+        private void Search(int itemIndex, int currentValue, int currentWeight, List<bool> currentSolution)
         {
-            Node includedNode = new Node
+            // Pruning/Fathoming based on objective type
+            if (_objectiveType.ToLower() == "max")
             {
-                Level = nextItemIndex + 1,
-                CurrentWeight = node.CurrentWeight + nextItem.Weight,
-                CurrentValue = node.CurrentValue + nextItem.Value,
-                IncludedItems = new List<int>(node.IncludedItems)
-            };
-            includedNode.IncludedItems.Add(nextItemIndex);
-            includedNode.UpperBound = Bound(includedNode);
-            outputBuilder.AppendLine($"  Branching to include item {nextItemIndex + 1}. Current value: {includedNode.CurrentValue}, upper bound: {includedNode.UpperBound:F2}");
-            BranchAndBound(includedNode);
+                if (currentValue + CalculateUpperBound(itemIndex) <= _bestValue)
+                {
+                    _outputBuilder.AppendLine($"  Fathoming node at level {itemIndex}. Upper bound ({currentValue + CalculateUpperBound(itemIndex):F2}) is not better than current best ({_bestValue}).");
+                    return;
+                }
+            }
+            else // Minimize
+            {
+                // This logic is simplified but effective for positive values.
+                // If the current value already exceeds the best value, no need to continue.
+                if (currentValue >= _bestValue)
+                {
+                    _outputBuilder.AppendLine($"  Fathoming node at level {itemIndex}. Current value ({currentValue}) is not better than current best ({_bestValue}).");
+                    return;
+                }
+            }
+
+            // Check if a complete solution is found
+            if (itemIndex == _values.Count)
+            {
+                // Update best solution based on objective type
+                if (_objectiveType.ToLower() == "max")
+                {
+                    if (currentValue > _bestValue)
+                    {
+                        _bestValue = currentValue;
+                        _bestSolution = new List<bool>(currentSolution);
+                        _outputBuilder.AppendLine($"  New best solution found! Value: {_bestValue}");
+                    }
+                }
+                else // Minimize
+                {
+                    if (currentValue < _bestValue)
+                    {
+                        _bestValue = currentValue;
+                        _bestSolution = new List<bool>(currentSolution);
+                        _outputBuilder.AppendLine($"  New best solution found! Value: {_bestValue}");
+                    }
+                }
+                return;
+            }
+
+            // Branch 1: Include the current item
+            if (currentWeight + _weights[itemIndex] <= _capacity)
+            {
+                _outputBuilder.AppendLine($"  Branching to include item {itemIndex + 1}. Current value: {currentValue + _values[itemIndex]}, upper bound: {currentValue + _values[itemIndex] + CalculateUpperBound(itemIndex + 1):F2}");
+                currentSolution[itemIndex] = true;
+                Search(itemIndex + 1, currentValue + _values[itemIndex], currentWeight + _weights[itemIndex], currentSolution);
+            }
+
+            // Branch 2: Exclude the current item
+            _outputBuilder.AppendLine($"  Branching to exclude item {itemIndex + 1}. Current value: {currentValue}, upper bound: {currentValue + CalculateUpperBound(itemIndex + 1):F2}");
+            currentSolution[itemIndex] = false;
+            Search(itemIndex + 1, currentValue, currentWeight, currentSolution);
         }
 
-        // Branch to exclude the next item
-        Node excludedNode = new Node
+        private double CalculateUpperBound(int startItemIndex)
         {
-            Level = nextItemIndex + 1,
-            CurrentWeight = node.CurrentWeight,
-            CurrentValue = node.CurrentValue,
-            IncludedItems = new List<int>(node.IncludedItems)
-        };
-        excludedNode.UpperBound = Bound(excludedNode);
-        outputBuilder.AppendLine($"  Branching to exclude item {nextItemIndex + 1}. Current value: {excludedNode.CurrentValue}, upper bound: {excludedNode.UpperBound:F2}");
-        BranchAndBound(excludedNode);
-    }
+            double upperBound = 0;
+            double remainingCapacity = _capacity;
 
-    // Calculates the upper bound using a greedy approach for the fractional knapsack problem
-    private double Bound(Node node)
-    {
-        double result = node.CurrentValue;
-        int j = node.Level;
-        int totalWeight = node.CurrentWeight;
-
-        while (j < items.Count && totalWeight + items[j].Weight <= capacity)
-        {
-            totalWeight += items[j].Weight;
-            result += items[j].Value;
-            j++;
+            // Simple upper bound calculation for the rest of the items.
+            for (int i = startItemIndex; i < _values.Count; i++)
+            {
+                upperBound += _values[i];
+            }
+            return upperBound;
         }
-
-        if (j < items.Count)
-        {
-            result += (capacity - totalWeight) * items[j].Density;
-        }
-        
-        return result;
     }
 }
