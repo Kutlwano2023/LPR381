@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using LPR381Solver.Core;
 using LPR381Solver.Algorithms;
 using LPR381Solver.IO;
+using LPR_Project; // Added this using directive for PrimalSimplex
 
 namespace LPR381Solver.Main
 {
@@ -89,7 +90,64 @@ namespace LPR381Solver.Main
                         }
                         break;
                     case 2:
-                       
+                        // ADDED PRIMAL SIMPLEX LOGIC HERE
+                        if (loadedModel == null)
+                        {
+                            Console.WriteLine("Error: Please load an LP model first (Option 1).");
+                            break;
+                        }
+
+                        // Convert LPModel to the PrimalSimplex's expected LinearProgramming format
+                        var simplexModel = new LPR_Project.LinearProgramming
+                        {
+                            ObjectiveType = loadedModel.ObjectiveType,
+                            Coefficients = loadedModel.ObjectiveCoefficients,
+                            Constraints = loadedModel.Constraints.SelectMany(c => c.Coefficients).ToList(),
+                            Relations = loadedModel.Constraints.Select(c =>
+                            {
+                                switch (c.Type)
+                                {
+                                    case LPR381Solver.Core.ConstraintType.LessThanOrEqual:
+                                        return "<=";
+                                    case LPR381Solver.Core.ConstraintType.GreaterThanOrEqual:
+                                        return ">=";
+                                    case LPR381Solver.Core.ConstraintType.Equal:
+                                        return "=";
+                                    default:
+                                        return "";
+                                }
+                            }).ToList(),
+                            RHS = loadedModel.Constraints.Select(c => c.RightHandSide).ToList()
+                        };
+
+                        // Solve using the PrimalSimplex algorithm, which returns a SimplexResult object.
+                        var primalSimplexResult = LPR_Project.LinearProgramming.PrimalSimplex.Solve(simplexModel);
+
+                        // Now, format the result object into a string for display.
+                        string newPrimalSimplexResults;
+                        if (!primalSimplexResult.IsFeasible)
+                        {
+                             newPrimalSimplexResults = "The problem is infeasible or unbounded.";
+                        }
+                        else
+                        {
+                            var sb = new StringBuilder();
+                            sb.AppendLine($"Optimal Objective Value: {primalSimplexResult.ObjectiveValue:F4}");
+                            sb.AppendLine("Variable values:");
+                            for (int i = 0; i < primalSimplexResult.Variables.Length; i++)
+                            {
+                                sb.AppendLine($"x{i + 1} = {primalSimplexResult.Variables[i]:F4}");
+                            }
+                            newPrimalSimplexResults = sb.ToString();
+                        }
+
+                        string formattedPrimalSimplexResults = "\n=============================================\n" +
+                                                         "== Primal Simplex Results ==\n" +
+                                                         "=============================================\n" +
+                                                         newPrimalSimplexResults;
+                        
+                        solutionResults += formattedPrimalSimplexResults;
+                        Console.WriteLine(formattedPrimalSimplexResults);
                         break;
                     case 3:
                         Console.WriteLine("Revised Primal Simplex logic to be implemented.");

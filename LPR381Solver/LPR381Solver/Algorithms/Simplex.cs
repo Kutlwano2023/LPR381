@@ -57,7 +57,7 @@ namespace LPR_Project
         // Primal simplex solver model
         public class PrimalSimplex
         {
-            public static string Solve(LinearProgramming model)
+            public static SimplexResult Solve(LinearProgramming model)
             {
                 try
                 {
@@ -67,11 +67,11 @@ namespace LPR_Project
                     // Solve using simplex
                     var result = SolveSimplex(tableau, model);
 
-                    return FormatResult(result, model);
+                    return result;
                 }
                 catch (Exception ex)
                 {
-                    return $"Error in Primal Simplex: {ex.Message}";
+                    return new SimplexResult { IsOptimal = false, IsFeasible = false, ErrorMessage = ex.Message };
                 }
             }
 
@@ -202,6 +202,7 @@ namespace LPR_Project
                 }
 
                 result.IsOptimal = true;
+                result.IsFeasible = true;
                 return result;
             }
 
@@ -236,9 +237,11 @@ namespace LPR_Project
         public double ObjectiveValue { get; set; }
         public double[] Variables { get; set; }
         public bool IsOptimal { get; set; }
+        public bool IsFeasible { get; set; }
+        public string ErrorMessage { get; set; } 
     }
 
         }
-    }
+    
 
-}
+
