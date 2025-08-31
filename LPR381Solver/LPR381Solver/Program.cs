@@ -90,7 +90,6 @@ namespace LPR381Solver.Main
                         }
                         break;
                     case 2:
-                        // ADDED PRIMAL SIMPLEX LOGIC HERE
                         if (loadedModel == null)
                         {
                             Console.WriteLine("Error: Please load an LP model first (Option 1).");
@@ -121,7 +120,7 @@ namespace LPR381Solver.Main
                         };
 
                         // Solve using the PrimalSimplex algorithm, which returns a SimplexResult object.
-                        var primalSimplexResult = LPR_Project.LinearProgramming.PrimalSimplex.Solve(simplexModel);
+                        var primalSimplexResult = PrimalSimplex.Solve(simplexModel);
 
                         // Now, format the result object into a string for display.
                         string newPrimalSimplexResults;
@@ -142,9 +141,9 @@ namespace LPR381Solver.Main
                         }
 
                         string formattedPrimalSimplexResults = "\n=============================================\n" +
-                                                         "== Primal Simplex Results ==\n" +
-                                                         "=============================================\n" +
-                                                         newPrimalSimplexResults;
+                                                               "== Primal Simplex Results ==\n" +
+                                                               "=============================================\n" +
+                                                               newPrimalSimplexResults;
                         
                         solutionResults += formattedPrimalSimplexResults;
                         Console.WriteLine(formattedPrimalSimplexResults);

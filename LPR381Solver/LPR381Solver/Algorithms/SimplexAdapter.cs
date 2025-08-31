@@ -33,59 +33,20 @@ namespace LPR381Solver.Algorithms
                 RHS = model.Constraints.Select(c => c.RightHandSide).ToList()
             };
 
-            // Call the PrimalSimplex solver (returns string)
-            // If you really need to work with a string representation
-            var simplexResult = LPR_Project.LinearProgramming.PrimalSimplex.Solve(lpModel);
-            string resultString = simplexResult.ToString();
+            // Call the PrimalSimplex solver
+            var simplexResult = PrimalSimplex.Solve(lpModel);
 
-            // Create your result object
+            // Create your result object and populate it directly
             var result = new LPR381Solver.Core.SimplexResult();
 
-            // Check string content (less reliable than checking properties)
-            if (resultString.Contains("Error") || resultString.Contains("Unbounded"))
+            if (simplexResult.IsFeasible)
             {
-                result.IsFeasible = false;
-                result.OptimalValue = double.NaN;
-                result.Solution = new double[model.NumVariables];
-                return result;
+                result.IsFeasible = true;
+                result.ObjectiveValue = simplexResult.ObjectiveValue;
+                result.Solution = simplexResult.Variables;
             }
-            // Check if the solution contains an error
-            if (resultString.Contains("Error") || resultString.Contains("Unbounded"))
+            else
             {
-                result.IsFeasible = false;
-                result.ObjectiveValue = double.NaN;
-                result.Solution = new double[model.NumVariables];
-                return result;
-            }
-
-            // Parse the string output to extract values
-            try
-            {
-                // Extract objective value
-                var objectiveMatch = Regex.Match(resultString, @"Objective Value: ([-+]?[0-9]*\.?[0-9]+)");
-                if (objectiveMatch.Success)
-                {
-                    result.ObjectiveValue = double.Parse(objectiveMatch.Groups[1].Value, CultureInfo.InvariantCulture);
-                }
-
-                // Extract variable values
-                result.Solution = new double[model.NumVariables];
-                var variableMatches = Regex.Matches(resultString, @"x(\d+) = ([-+]?[0-9]*\.?[0-9]+)");
-                foreach (Match match in variableMatches)
-                {
-                    int index = int.Parse(match.Groups[1].Value) - 1;
-                    if (index < model.NumVariables)
-                    {
-                        result.Solution[index] = double.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
-                    }
-                }
-
-                // Check if optimal
-                result.IsFeasible = !resultString.Contains("Not Optimal") && !resultString.Contains("WARNING");
-            }
-            catch
-            {
-                // If parsing fails, return an infeasible result
                 result.IsFeasible = false;
                 result.ObjectiveValue = double.NaN;
                 result.Solution = new double[model.NumVariables];

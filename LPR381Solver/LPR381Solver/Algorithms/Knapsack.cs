@@ -7,8 +7,7 @@ namespace LPR381Solver.Algorithms
 {
     public class Knapsack
     {
-        private readonly List<double> _values;
-        private readonly List<double> _weights;
+      
         private readonly double _capacity;
         private readonly string _objectiveType;
         private readonly List<Item> _items;
