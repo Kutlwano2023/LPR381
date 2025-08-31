@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO; // Added this for File.ReadAllLines()
 using System.Linq;
@@ -51,7 +51,7 @@ namespace LPR_Project
             model.Constraints.AddRange(coefficients);
             model.Relations.Add(relation);
             model.RHS.Add(rhs);
-       } 
+        }
 
 
         // Primal simplex solver model
@@ -238,10 +238,10 @@ namespace LPR_Project
         public double[] Variables { get; set; }
         public bool IsOptimal { get; set; }
         public bool IsFeasible { get; set; }
-        public string ErrorMessage { get; set; } 
+        public string ErrorMessage { get; set; }
     }
 
-        }
-    
+}
+
 
 
