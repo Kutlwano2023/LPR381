@@ -2,6 +2,7 @@ using LPR_Project;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Linq;
+using System.Globalization;
 
 namespace LPR381Solver.Algorithms
 {
@@ -32,30 +33,63 @@ namespace LPR381Solver.Algorithms
                 RHS = model.Constraints.Select(c => c.RightHandSide).ToList()
             };
 
-            // Call the original, unchanged PrimalSimplex solver
-            // This line is the cause of the error. It needs to be corrected.
-            // Old line: string resultString = LPR_Project.LinearProgramming.PrimalSimplex.Solve(lpModel); ❌
-            // Corrected line:
-            var primalSimplexResult = LPR_Project.LinearProgramming.PrimalSimplex.Solve(lpModel); 
+            // Call the PrimalSimplex solver (returns string)
+            // If you really need to work with a string representation
+            var simplexResult = LPR_Project.LinearProgramming.PrimalSimplex.Solve(lpModel);
+            string resultString = simplexResult.ToString();
+
+            // Create your result object
             var result = new LPR381Solver.Core.SimplexResult();
 
-            // The PrimalSimplex.Solve method returns a SimplexResult, not a string.
-            // We now have the result as an object and can access its properties.
-
-            // Check if the solution is an error
-            if (!primalSimplexResult.IsFeasible || !primalSimplexResult.IsOptimal)
+            // Check string content (less reliable than checking properties)
+            if (resultString.Contains("Error") || resultString.Contains("Unbounded"))
+            {
+                result.IsFeasible = false;
+                result.OptimalValue = double.NaN;
+                result.Solution = new double[model.NumVariables];
+                return result;
+            }
+            // Check if the solution contains an error
+            if (resultString.Contains("Error") || resultString.Contains("Unbounded"))
             {
                 result.IsFeasible = false;
                 result.ObjectiveValue = double.NaN;
                 result.Solution = new double[model.NumVariables];
-                // Handle case where PrimalSimplex returns an error
                 return result;
             }
 
-            // Map the properties from the PrimalSimplex's SimplexResult to the Core's SimplexResult
-            result.ObjectiveValue = primalSimplexResult.ObjectiveValue;
-            result.Solution = primalSimplexResult.Variables;
-            result.IsFeasible = primalSimplexResult.IsFeasible;
+            // Parse the string output to extract values
+            try
+            {
+                // Extract objective value
+                var objectiveMatch = Regex.Match(resultString, @"Objective Value: ([-+]?[0-9]*\.?[0-9]+)");
+                if (objectiveMatch.Success)
+                {
+                    result.ObjectiveValue = double.Parse(objectiveMatch.Groups[1].Value, CultureInfo.InvariantCulture);
+                }
+
+                // Extract variable values
+                result.Solution = new double[model.NumVariables];
+                var variableMatches = Regex.Matches(resultString, @"x(\d+) = ([-+]?[0-9]*\.?[0-9]+)");
+                foreach (Match match in variableMatches)
+                {
+                    int index = int.Parse(match.Groups[1].Value) - 1;
+                    if (index < model.NumVariables)
+                    {
+                        result.Solution[index] = double.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+                    }
+                }
+
+                // Check if optimal
+                result.IsFeasible = !resultString.Contains("Not Optimal") && !resultString.Contains("WARNING");
+            }
+            catch
+            {
+                // If parsing fails, return an infeasible result
+                result.IsFeasible = false;
+                result.ObjectiveValue = double.NaN;
+                result.Solution = new double[model.NumVariables];
+            }
 
             return result;
         }
