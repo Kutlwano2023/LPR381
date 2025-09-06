@@ -183,7 +183,7 @@ namespace LPR381Solver.Main
                         Console.WriteLine("Cutting Plane Algorithm logic to be implemented.");
                         break;
                     case 7:
-                        Console.WriteLine("Sensitivity Analysis logic to be implemented.");
+                        ShowSensitivityMenu();
                         break;
                     case 8:
                         if (solutionResults != null)
@@ -213,5 +213,71 @@ namespace LPR381Solver.Main
                 }
             }
         }
-    }
+        //Sensitivity menu
+        public static void ShowSensitivityMenu()
+        {
+            if (A == null || b == null || c == null)
+            {
+                Console.WriteLine("Error: Load a model first.");
+                return;
+            }
+
+            bool exitMenu = false;
+            while (!exitMenu)
+            {
+                Console.WriteLine("\n===== Sensitivity Analysis Menu =====");
+                Console.WriteLine("1. Display Non-Basic Variable Ranges");
+                Console.WriteLine("2. Apply Change to Non-Basic Variable");
+                Console.WriteLine("3. Display Basic Variable Ranges");
+                Console.WriteLine("4. Apply Change to Basic Variable");
+                Console.WriteLine("5. Display Constraint RHS Ranges");
+                Console.WriteLine("6. Apply Change to Constraint RHS");
+                Console.WriteLine("7. Display Shadow Prices");
+                Console.WriteLine("8. Run Full Sensitivity Analysis and Export");
+                Console.WriteLine("9. Return to Main Menu");
+                Console.WriteLine("====================================");
+                Console.Write("Select an option: ");
+
+                if (!int.TryParse(Console.ReadLine(), out int choice))
+                {
+                    Console.WriteLine("Invalid input. Enter a number.");
+                    continue;
+                }
+
+                switch (choice)
+                {
+                    case 1:
+                        Sensitivity.DisplayNonBasicRanges(c, basisIndices, BInv, A);
+                        break;
+                    case 2:
+                        Sensitivity.ApplyNonBasicInteractive(c, basisIndices, BInv, A, b);
+                        break;
+                    case 3:
+                        Sensitivity.DisplayBasicRanges(basisIndices, BInv, b);
+                        break;
+                    case 4:
+                        Sensitivity.ApplyBasicInteractive(basisIndices, BInv, b, c);
+                        break;
+                    case 5:
+                        Sensitivity.DisplayRHSRanges(BInv, b);
+                        break;
+                    case 6:
+                        Sensitivity.ApplyRHSInteractive(BInv, b, c, basisIndices);
+                        break;
+                    case 7:
+                        Sensitivity.DisplayShadowPrices(c, basisIndices, BInv);
+                        break;
+                    case 8:
+                        Sensitivity.Run(A, b, c, basisIndices, BInv);
+                        Console.WriteLine("Full sensitivity analysis exported to SensitivityResults.txt");
+                        break;
+                    case 9:
+                        exitMenu = true;
+                        break;
+                    default:
+                        Console.WriteLine("Pick a valid option.");
+                        break;
+                }
+            }
+        }
 }
